@@ -1,0 +1,1663 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DataViz Studio - 数据可视化工作台</title>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-tertiary: #21262d;
+      --border-color: #30363d;
+      --text-primary: #c9d1d9;
+      --text-secondary: #8b949e;
+      --accent: #58a6ff;
+      --accent-hover: #79c0ff;
+      --success: #238636;
+      --warning: #f0883e;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      height: 100vh;
+      overflow: hidden;
+    }
+    
+    /* Header */
+    .header {
+      height: 48px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+    }
+    
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+    
+    .logo {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .nav-tabs {
+      display: flex;
+      gap: 4px;
+    }
+    
+    .nav-tab {
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .nav-tab:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+    .nav-tab.active { background: var(--bg-tertiary); color: var(--text-primary); }
+    
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .btn {
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .btn:hover { background: var(--border-color); }
+    .btn-primary { background: var(--success); border-color: var(--success); }
+    .btn-primary:hover { background: #2ea043; }
+    
+    /* Main Layout */
+    .main {
+      display: flex;
+      height: calc(100vh - 48px);
+    }
+    
+    /* Gallery Panel (Left) */
+    .gallery-panel {
+      width: 320px;
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .panel-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .gallery-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+    
+    .gallery-item {
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      background: var(--bg-tertiary);
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .gallery-item:hover {
+      border-color: var(--border-color);
+      transform: translateY(-1px);
+    }
+    
+    .gallery-item.active {
+      border-color: var(--accent);
+      background: rgba(88, 166, 255, 0.1);
+    }
+    
+    .gallery-item-title {
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .gallery-item-preview {
+      width: 100%;
+      height: 100px;
+      background: var(--bg-primary);
+      border-radius: 6px;
+      margin-bottom: 8px;
+      overflow: hidden;
+    }
+    
+    .gallery-item-desc {
+      font-size: 11px;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+    
+    .gallery-item-tags {
+      display: flex;
+      gap: 4px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+    
+    .tag {
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      background: var(--bg-primary);
+      color: var(--text-secondary);
+    }
+    
+    /* Editor Panel (Center) */
+    .editor-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+    
+    .data-section {
+      padding: 16px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .upload-area {
+      border: 2px dashed var(--border-color);
+      border-radius: 8px;
+      padding: 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .upload-area:hover {
+      border-color: var(--accent);
+      background: rgba(88, 166, 255, 0.05);
+    }
+    
+    .upload-area.has-data {
+      border-style: solid;
+      border-color: var(--success);
+      background: rgba(35, 134, 54, 0.05);
+    }
+    
+    .upload-icon {
+      font-size: 24px;
+      margin-bottom: 8px;
+    }
+    
+    .upload-text {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+    
+    .upload-hint {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+    
+    .data-preview {
+      margin-top: 12px;
+      max-height: 150px;
+      overflow: auto;
+      background: var(--bg-primary);
+      border-radius: 6px;
+      padding: 8px;
+      font-size: 11px;
+      font-family: 'SF Mono', Monaco, monospace;
+    }
+    
+    .code-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    
+    .code-toolbar {
+      padding: 8px 16px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .code-tabs {
+      display: flex;
+      gap: 4px;
+    }
+    
+    .code-tab {
+      padding: 4px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+    
+    .code-tab.active {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+    }
+    
+    .CodeMirror {
+      flex: 1;
+      height: auto;
+      background: var(--bg-primary) !important;
+      font-family: 'SF Mono', Monaco, monospace;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    
+    .CodeMirror-gutters {
+      background: var(--bg-primary) !important;
+      border-right: 1px solid var(--border-color);
+    }
+    
+    .CodeMirror-linenumber {
+      color: var(--text-secondary);
+    }
+    
+    /* Preview Panel (Right) */
+    .preview-panel {
+      width: 520px;
+      background: var(--bg-secondary);
+      border-left: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .preview-toolbar {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .preview-title {
+      font-size: 13px;
+      font-weight: 500;
+    }
+    
+    .preview-actions {
+      display: flex;
+      gap: 8px;
+    }
+    
+    .preview-content {
+      flex: 1;
+      padding: 16px;
+      overflow: auto;
+    }
+    
+    .chart-container {
+      background: white;
+      border-radius: 8px;
+      height: 100%;
+      min-height: 400px;
+    }
+    
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    
+    ::-webkit-scrollbar-track {
+      background: var(--bg-primary);
+    }
+    
+    ::-webkit-scrollbar-thumb {
+      background: var(--border-color);
+      border-radius: 4px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--text-secondary);
+    }
+    
+    /* Empty State */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--text-secondary);
+      text-align: center;
+      padding: 24px;
+    }
+    
+    .empty-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+    
+    .empty-title {
+      font-size: 16px;
+      font-weight: 500;
+      margin-bottom: 8px;
+      color: var(--text-primary);
+    }
+    
+    .empty-desc {
+      font-size: 13px;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-left">
+      <div class="logo">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <path d="M3 9h18M9 21V9"/>
+        </svg>
+        DataViz Studio
+      </div>
+      <nav class="nav-tabs">
+        <div class="nav-tab active" data-tab="gallery">图库</div>
+        <div class="nav-tab" data-tab="editor">编辑器</div>
+      </nav>
+    </div>
+    <div class="header-right">
+      <button class="btn" onclick="exportChart('png')">
+        <span>📥</span> 导出 PNG
+      </button>
+      <button class="btn" onclick="exportChart('svg')">
+        <span>📊</span> 导出 SVG
+      </button>
+      <button class="btn btn-primary" onclick="runCode()">
+        <span>▶</span> 运行
+      </button>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main class="main">
+    <!-- Gallery Panel -->
+    <aside class="gallery-panel">
+      <div class="panel-header">示例图库</div>
+      <div class="gallery-list">
+        <div class="gallery-item active" data-chart="wind">
+          <div class="gallery-item-title">🌬️ 风速数据分析</div>
+          <div class="gallery-item-preview" id="preview-wind"></div>
+          <div class="gallery-item-desc">纽约市1973年风速数据 · 直方图+箱线图组合</div>
+          <div class="gallery-item-tags">
+            <span class="tag">直方图</span>
+            <span class="tag">箱线图</span>
+          </div>
+        </div>
+        <div class="gallery-item" data-chart="scatter">
+          <div class="gallery-item-title">🚗 散点回归分析</div>
+          <div class="gallery-item-preview" id="preview-scatter"></div>
+          <div class="gallery-item-desc">mtcars数据集 · 车重与排量关系 · 异常点检测</div>
+          <div class="gallery-item-tags">
+            <span class="tag">散点图</span>
+            <span class="tag">回归</span>
+          </div>
+        </div>
+        <div class="gallery-item" data-chart="light-map">
+          <div class="gallery-item-title">🗺️ 灯光强度地图</div>
+          <div class="gallery-item-preview" id="preview-light-map"></div>
+          <div class="gallery-item-desc">中国县级夜间灯光强度分布 · CFPS气泡叠加</div>
+          <div class="gallery-item-tags">
+            <span class="tag">地图</span>
+            <span class="tag">气泡图</span>
+          </div>
+        </div>
+        <div class="gallery-item" data-chart="flow-network">
+          <div class="gallery-item-title">🌀 流量网络图</div>
+          <div class="gallery-item-preview" id="preview-flow-network"></div>
+          <div class="gallery-item-desc">CFPS县际流量曲线 · 动态流向可视化</div>
+          <div class="gallery-item-tags">
+            <span class="tag">流向图</span>
+            <span class="tag">网络</span>
+          </div>
+        </div>
+        <div class="gallery-item" data-chart="heatmap">
+          <div class="gallery-item-title">🔥 时空热力图</div>
+          <div class="gallery-item-preview" id="preview-heatmap"></div>
+          <div class="gallery-item-desc">一周内各时段灯光活跃度 · 时空数据热力分布</div>
+          <div class="gallery-item-tags">
+            <span class="tag">热力图</span>
+            <span class="tag">时空</span>
+          </div>
+        </div>
+        <div class="gallery-item" data-chart="sankey">
+          <div class="gallery-item-title">🌊 CFPS流向桑基图</div>
+          <div class="gallery-item-preview" id="preview-sankey"></div>
+          <div class="gallery-item-desc">区域间样本流动关系 · 桑基流向可视化</div>
+          <div class="gallery-item-tags">
+            <span class="tag">桑基图</span>
+            <span class="tag">流向</span>
+          </div>
+        </div>
+        <div class="gallery-item" data-chart="radar">
+          <div class="gallery-item-title">📡 多维度雷达图</div>
+          <div class="gallery-item-preview" id="preview-radar"></div>
+          <div class="gallery-item-desc">城市综合指标对比 · 多维度雷达分析</div>
+          <div class="gallery-item-tags">
+            <span class="tag">雷达图</span>
+            <span class="tag">对比</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Editor Panel -->
+    <section class="editor-panel">
+      <!-- Data Upload -->
+      <div class="data-section">
+        <div class="section-title">
+          <span>📁 数据</span>
+          <span id="dataStatus"></span>
+        </div>
+        <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+          <div class="upload-icon">📤</div>
+          <div class="upload-text" id="uploadText">点击上传 CSV 文件</div>
+          <div class="upload-hint">或将文件拖拽到此处</div>
+        </div>
+        <input type="file" id="fileInput" accept=".csv" style="display: none" onchange="handleFileUpload(event)">
+        <div class="data-preview" id="dataPreview" style="display: none"></div>
+      </div>
+
+      <!-- Code Editor -->
+      <div class="code-section">
+        <div class="code-toolbar">
+          <div class="code-tabs">
+            <div class="code-tab active">chart.js</div>
+          </div>
+          <button class="btn" onclick="resetCode()" style="padding: 4px 8px; font-size: 11px;">
+            重置代码
+          </button>
+        </div>
+        <textarea id="codeEditor"></textarea>
+      </div>
+    </section>
+
+    <!-- Preview Panel -->
+    <aside class="preview-panel">
+      <div class="preview-toolbar">
+        <span class="preview-title">👁️ 实时预览</span>
+        <div class="preview-actions">
+          <button class="btn" onclick="refreshPreview()" style="padding: 4px 8px;">🔄</button>
+        </div>
+      </div>
+      <div class="preview-content">
+        <div id="chartContainer" class="chart-container"></div>
+      </div>
+    </aside>
+  </main>
+
+  <script>
+    // ======================== 全局状态 ========================
+    let chartInstance = null;
+    let currentData = null;
+    let editor = null;
+    let chinaGeoJson = null;
+    let geoLoaded = false;
+    let geoLoading = false;
+    let geoLoadCallbacks = [];
+    let previewCharts = {};
+
+    // ======================== airquality 数据集 ========================
+    const airquality = [
+      {Month:5,Day:1,Ozone:41,Solar_R:190,Wind:7.4,Temp:67},{Month:5,Day:2,Ozone:36,Solar_R:118,Wind:8.0,Temp:72},
+      {Month:5,Day:3,Ozone:12,Solar_R:149,Wind:12.6,Temp:74},{Month:5,Day:4,Ozone:18,Solar_R:313,Wind:11.5,Temp:62},
+      {Month:5,Day:5,Ozone:null,Solar_R:null,Wind:14.3,Temp:56},{Month:5,Day:6,Ozone:28,Solar_R:null,Wind:14.9,Temp:66},
+      {Month:5,Day:7,Ozone:23,Solar_R:299,Wind:8.6,Temp:65},{Month:5,Day:8,Ozone:19,Solar_R:99,Wind:13.8,Temp:59},
+      {Month:5,Day:9,Ozone:8,Solar_R:19,Wind:20.1,Temp:61},{Month:5,Day:10,Ozone:null,Solar_R:194,Wind:8.6,Temp:69},
+      {Month:5,Day:11,Ozone:7,Solar_R:null,Wind:6.9,Temp:74},{Month:5,Day:12,Ozone:16,Solar_R:256,Wind:9.7,Temp:69},
+      {Month:5,Day:13,Ozone:11,Solar_R:290,Wind:9.2,Temp:66},{Month:5,Day:14,Ozone:14,Solar_R:274,Wind:10.9,Temp:68},
+      {Month:5,Day:15,Ozone:18,Solar_R:65,Wind:13.2,Temp:58},{Month:5,Day:16,Ozone:14,Solar_R:334,Wind:11.5,Temp:64},
+      {Month:5,Day:17,Ozone:34,Solar_R:307,Wind:12.0,Temp:66},{Month:5,Day:18,Ozone:6,Solar_R:78,Wind:18.4,Temp:57},
+      {Month:5,Day:19,Ozone:30,Solar_R:322,Wind:11.5,Temp:68},{Month:5,Day:20,Ozone:11,Solar_R:44,Wind:9.7,Temp:62},
+      {Month:5,Day:21,Ozone:1,Solar_R:8,Wind:9.7,Temp:59},{Month:5,Day:22,Ozone:11,Solar_R:320,Wind:16.6,Temp:73},
+      {Month:5,Day:23,Ozone:4,Solar_R:25,Wind:9.7,Temp:61},{Month:5,Day:24,Ozone:32,Solar_R:92,Wind:12.0,Temp:61},
+      {Month:5,Day:25,Ozone:null,Solar_R:66,Wind:16.6,Temp:57},{Month:5,Day:26,Ozone:null,Solar_R:266,Wind:14.3,Temp:58},
+      {Month:5,Day:27,Ozone:null,Solar_R:null,Wind:8.0,Temp:57},{Month:5,Day:28,Ozone:23,Solar_R:13,Wind:12.0,Temp:67},
+      {Month:5,Day:29,Ozone:45,Solar_R:252,Wind:14.9,Temp:81},{Month:5,Day:30,Ozone:115,Solar_R:223,Wind:5.7,Temp:79},
+      {Month:5,Day:31,Ozone:37,Solar_R:279,Wind:7.4,Temp:76},
+      {Month:6,Day:1,Ozone:null,Solar_R:286,Wind:8.6,Temp:78},{Month:6,Day:2,Ozone:null,Solar_R:287,Wind:9.7,Temp:74},
+      {Month:6,Day:3,Ozone:null,Solar_R:242,Wind:16.1,Temp:67},{Month:6,Day:4,Ozone:null,Solar_R:186,Wind:9.2,Temp:84},
+      {Month:6,Day:5,Ozone:null,Solar_R:220,Wind:8.6,Temp:85},{Month:6,Day:6,Ozone:null,Solar_R:264,Wind:14.3,Temp:79},
+      {Month:6,Day:7,Ozone:29,Solar_R:127,Wind:9.7,Temp:82},{Month:6,Day:8,Ozone:null,Solar_R:273,Wind:6.9,Temp:87},
+      {Month:6,Day:9,Ozone:71,Solar_R:291,Wind:13.8,Temp:90},{Month:6,Day:10,Ozone:39,Solar_R:323,Wind:11.5,Temp:87},
+      {Month:6,Day:11,Ozone:null,Solar_R:259,Wind:10.9,Temp:93},{Month:6,Day:12,Ozone:null,Solar_R:250,Wind:9.2,Temp:92},
+      {Month:6,Day:13,Ozone:23,Solar_R:148,Wind:8.0,Temp:82},{Month:6,Day:14,Ozone:null,Solar_R:332,Wind:11.5,Temp:80},
+      {Month:6,Day:15,Ozone:null,Solar_R:322,Wind:4.1,Temp:77},{Month:6,Day:16,Ozone:21,Solar_R:191,Wind:9.7,Temp:72},
+      {Month:6,Day:17,Ozone:37,Solar_R:284,Wind:10.9,Temp:65},{Month:6,Day:18,Ozone:20,Solar_R:37,Wind:11.5,Temp:65},
+      {Month:6,Day:19,Ozone:12,Solar_R:120,Wind:11.5,Temp:73},{Month:6,Day:20,Ozone:13,Solar_R:137,Wind:12.0,Temp:76},
+      {Month:6,Day:21,Ozone:null,Solar_R:150,Wind:14.9,Temp:77},{Month:6,Day:22,Ozone:null,Solar_R:59,Wind:8.6,Temp:76},
+      {Month:6,Day:23,Ozone:null,Solar_R:91,Wind:8.0,Temp:76},{Month:6,Day:24,Ozone:null,Solar_R:250,Wind:9.2,Temp:75},
+      {Month:6,Day:25,Ozone:null,Solar_R:135,Wind:6.9,Temp:73},{Month:6,Day:26,Ozone:null,Solar_R:127,Wind:7.4,Temp:80},
+      {Month:6,Day:27,Ozone:null,Solar_R:47,Wind:9.2,Temp:77},{Month:6,Day:28,Ozone:null,Solar_R:98,Wind:12.0,Temp:83},
+      {Month:6,Day:29,Ozone:null,Solar_R:31,Wind:9.2,Temp:84},{Month:6,Day:30,Ozone:null,Solar_R:138,Wind:14.3,Temp:85},
+      {Month:7,Day:1,Ozone:135,Solar_R:269,Wind:4.1,Temp:84},{Month:7,Day:2,Ozone:49,Solar_R:248,Wind:9.2,Temp:85},
+      {Month:7,Day:3,Ozone:32,Solar_R:236,Wind:9.2,Temp:81},{Month:7,Day:4,Ozone:null,Solar_R:101,Wind:10.9,Temp:84},
+      {Month:7,Day:5,Ozone:64,Solar_R:175,Wind:4.6,Temp:83},{Month:7,Day:6,Ozone:40,Solar_R:314,Wind:10.9,Temp:83},
+      {Month:7,Day:7,Ozone:77,Solar_R:276,Wind:5.1,Temp:88},{Month:7,Day:8,Ozone:97,Solar_R:267,Wind:6.3,Temp:92},
+      {Month:7,Day:9,Ozone:97,Solar_R:272,Wind:5.7,Temp:92},{Month:7,Day:10,Ozone:85,Solar_R:175,Wind:7.4,Temp:89},
+      {Month:7,Day:11,Ozone:null,Solar_R:139,Wind:8.6,Temp:86},{Month:7,Day:12,Ozone:10,Solar_R:264,Wind:14.3,Temp:86},
+      {Month:7,Day:13,Ozone:27,Solar_R:175,Wind:14.9,Temp:82},{Month:7,Day:14,Ozone:null,Solar_R:291,Wind:8.6,Temp:84},
+      {Month:7,Day:15,Ozone:7,Solar_R:48,Wind:13.8,Temp:80},{Month:7,Day:16,Ozone:48,Solar_R:260,Wind:20.1,Temp:77},
+      {Month:7,Day:17,Ozone:35,Solar_R:274,Wind:8.6,Temp:81},{Month:7,Day:18,Ozone:61,Solar_R:285,Wind:6.9,Temp:84},
+      {Month:7,Day:19,Ozone:79,Solar_R:187,Wind:9.7,Temp:87},{Month:7,Day:20,Ozone:63,Solar_R:220,Wind:9.2,Temp:85},
+      {Month:7,Day:21,Ozone:16,Solar_R:7,Wind:10.9,Temp:81},{Month:7,Day:22,Ozone:null,Solar_R:258,Wind:13.2,Temp:80},
+      {Month:7,Day:23,Ozone:null,Solar_R:295,Wind:11.5,Temp:82},{Month:7,Day:24,Ozone:80,Solar_R:294,Wind:12.0,Temp:84},
+      {Month:7,Day:25,Ozone:108,Solar_R:223,Wind:18.4,Temp:84},{Month:7,Day:26,Ozone:20,Solar_R:81,Wind:11.5,Temp:83},
+      {Month:7,Day:27,Ozone:52,Solar_R:82,Wind:9.7,Temp:81},{Month:7,Day:28,Ozone:82,Solar_R:213,Wind:9.7,Temp:82},
+      {Month:7,Day:29,Ozone:50,Solar_R:275,Wind:16.6,Temp:86},{Month:7,Day:30,Ozone:64,Solar_R:253,Wind:9.7,Temp:85},
+      {Month:7,Day:31,Ozone:59,Solar_R:254,Wind:12.0,Temp:83},
+      {Month:8,Day:1,Ozone:39,Solar_R:83,Wind:6.9,Temp:81},{Month:8,Day:2,Ozone:9,Solar_R:24,Wind:13.8,Temp:81},
+      {Month:8,Day:3,Ozone:16,Solar_R:77,Wind:7.4,Temp:82},{Month:8,Day:4,Ozone:78,Solar_R:null,Wind:6.9,Temp:86},
+      {Month:8,Day:5,Ozone:35,Solar_R:null,Wind:7.4,Temp:85},{Month:8,Day:6,Ozone:66,Solar_R:null,Wind:4.6,Temp:87},
+      {Month:8,Day:7,Ozone:122,Solar_R:255,Wind:4.0,Temp:89},{Month:8,Day:8,Ozone:89,Solar_R:229,Wind:10.3,Temp:90},
+      {Month:8,Day:9,Ozone:110,Solar_R:207,Wind:8.0,Temp:90},{Month:8,Day:10,Ozone:null,Solar_R:222,Wind:8.6,Temp:92},
+      {Month:8,Day:11,Ozone:null,Solar_R:137,Wind:11.5,Temp:86},{Month:8,Day:12,Ozone:44,Solar_R:192,Wind:11.5,Temp:86},
+      {Month:8,Day:13,Ozone:28,Solar_R:273,Wind:11.5,Temp:82},{Month:8,Day:14,Ozone:65,Solar_R:157,Wind:9.7,Temp:80},
+      {Month:8,Day:15,Ozone:null,Solar_R:64,Wind:11.5,Temp:77},{Month:8,Day:16,Ozone:22,Solar_R:71,Wind:9.2,Temp:79},
+      {Month:8,Day:17,Ozone:59,Solar_R:51,Wind:8.6,Temp:81},{Month:8,Day:18,Ozone:23,Solar_R:115,Wind:11.5,Temp:82},
+      {Month:8,Day:19,Ozone:31,Solar_R:244,Wind:10.9,Temp:82},{Month:8,Day:20,Ozone:44,Solar_R:190,Wind:9.2,Temp:83},
+      {Month:8,Day:21,Ozone:21,Solar_R:259,Wind:8.0,Temp:81},{Month:8,Day:22,Ozone:9,Solar_R:36,Wind:14.3,Temp:78},
+      {Month:8,Day:23,Ozone:null,Solar_R:255,Wind:4.1,Temp:78},{Month:8,Day:24,Ozone:45,Solar_R:212,Wind:9.7,Temp:79},
+      {Month:8,Day:25,Ozone:168,Solar_R:238,Wind:10.9,Temp:81},{Month:8,Day:26,Ozone:73,Solar_R:215,Wind:11.5,Temp:79},
+      {Month:8,Day:27,Ozone:null,Solar_R:153,Wind:11.5,Temp:76},{Month:8,Day:28,Ozone:76,Solar_R:203,Wind:12.0,Temp:78},
+      {Month:8,Day:29,Ozone:118,Solar_R:225,Wind:14.9,Temp:82},{Month:8,Day:30,Ozone:84,Solar_R:237,Wind:8.6,Temp:84},
+      {Month:8,Day:31,Ozone:85,Solar_R:188,Wind:8.0,Temp:85},
+      {Month:9,Day:1,Ozone:96,Solar_R:167,Wind:6.9,Temp:83},{Month:9,Day:2,Ozone:78,Solar_R:197,Wind:10.9,Temp:79},
+      {Month:9,Day:3,Ozone:73,Solar_R:183,Wind:10.3,Temp:77},{Month:9,Day:4,Ozone:91,Solar_R:189,Wind:8.0,Temp:76},
+      {Month:9,Day:5,Ozone:47,Solar_R:95,Wind:7.4,Temp:76},{Month:9,Day:6,Ozone:32,Solar_R:92,Wind:15.5,Temp:78},
+      {Month:9,Day:7,Ozone:20,Solar_R:252,Wind:7.4,Temp:73},{Month:9,Day:8,Ozone:23,Solar_R:220,Wind:10.9,Temp:76},
+      {Month:9,Day:9,Ozone:21,Solar_R:230,Wind:10.9,Temp:76},{Month:9,Day:10,Ozone:24,Solar_R:259,Wind:10.9,Temp:75},
+      {Month:9,Day:11,Ozone:44,Solar_R:236,Wind:14.3,Temp:78},{Month:9,Day:12,Ozone:21,Solar_R:259,Wind:10.9,Temp:75},
+      {Month:9,Day:13,Ozone:28,Solar_R:238,Wind:13.8,Temp:74},{Month:9,Day:14,Ozone:9,Solar_R:24,Wind:10.9,Temp:69},
+      {Month:9,Day:15,Ozone:13,Solar_R:112,Wind:11.5,Temp:62},{Month:9,Day:16,Ozone:46,Solar_R:237,Wind:9.2,Temp:66},
+      {Month:9,Day:17,Ozone:18,Solar_R:224,Wind:10.9,Temp:68},{Month:9,Day:18,Ozone:13,Solar_R:27,Wind:8.0,Temp:66},
+      {Month:9,Day:19,Ozone:24,Solar_R:238,Wind:10.9,Temp:68},{Month:9,Day:20,Ozone:16,Solar_R:201,Wind:13.1,Temp:66},
+      {Month:9,Day:21,Ozone:13,Solar_R:238,Wind:14.3,Temp:63},{Month:9,Day:22,Ozone:23,Solar_R:14,Wind:9.2,Temp:62},
+      {Month:9,Day:23,Ozone:36,Solar_R:139,Wind:6.9,Temp:67},{Month:9,Day:24,Ozone:7,Solar_R:49,Wind:10.9,Temp:65},
+      {Month:9,Day:25,Ozone:14,Solar_R:20,Wind:14.3,Temp:63},{Month:9,Day:26,Ozone:30,Solar_R:193,Wind:8.0,Temp:66},
+      {Month:9,Day:27,Ozone:null,Solar_R:145,Wind:9.7,Temp:63},{Month:9,Day:28,Ozone:14,Solar_R:191,Wind:14.3,Temp:63},
+      {Month:9,Day:29,Ozone:18,Solar_R:131,Wind:8.0,Temp:62},{Month:9,Day:30,Ozone:20,Solar_R:223,Wind:11.5,Temp:65}
+    ];
+
+    // ======================== mtcars 数据集 ========================
+    const mtcars = [
+      {name:"Mazda RX4",wt:2.620,disp:160,cyl:6,mpg:21.0},{name:"Mazda RX4 Wag",wt:2.875,disp:160,cyl:6,mpg:21.0},
+      {name:"Datsun 710",wt:2.320,disp:108,cyl:4,mpg:22.8},{name:"Hornet 4 Drive",wt:3.215,disp:258,cyl:6,mpg:21.4},
+      {name:"Hornet Sportabout",wt:3.440,disp:360,cyl:8,mpg:18.7},{name:"Valiant",wt:3.460,disp:225,cyl:6,mpg:18.1},
+      {name:"Duster 360",wt:3.570,disp:360,cyl:8,mpg:14.3},{name:"Merc 240D",wt:3.190,disp:146.7,cyl:4,mpg:24.4},
+      {name:"Merc 230",wt:3.150,disp:140.8,cyl:4,mpg:22.8},{name:"Merc 280",wt:3.440,disp:167.6,cyl:6,mpg:19.2},
+      {name:"Merc 280C",wt:3.440,disp:167.6,cyl:6,mpg:17.8},{name:"Merc 450SE",wt:4.070,disp:275.8,cyl:8,mpg:16.4},
+      {name:"Merc 450SL",wt:3.730,disp:275.8,cyl:8,mpg:17.3},{name:"Merc 450SLC",wt:3.780,disp:275.8,cyl:8,mpg:15.2},
+      {name:"Cadillac Fleetwood",wt:5.250,disp:472,cyl:8,mpg:10.4},{name:"Lincoln Continental",wt:5.424,disp:460,cyl:8,mpg:10.4},
+      {name:"Chrysler Imperial",wt:5.345,disp:440,cyl:8,mpg:14.7},{name:"Fiat 128",wt:2.200,disp:78.7,cyl:4,mpg:32.4},
+      {name:"Honda Civic",wt:1.615,disp:75.7,cyl:4,mpg:30.4},{name:"Toyota Corolla",wt:1.835,disp:71.1,cyl:4,mpg:33.9},
+      {name:"Toyota Corona",wt:2.465,disp:120.1,cyl:4,mpg:21.5},{name:"Dodge Challenger",wt:3.520,disp:318,cyl:8,mpg:15.5},
+      {name:"AMC Javelin",wt:3.435,disp:304,cyl:8,mpg:15.2},{name:"Camaro Z28",wt:3.840,disp:350,cyl:8,mpg:13.3},
+      {name:"Pontiac Firebird",wt:3.845,disp:400,cyl:8,mpg:19.2},{name:"Fiat X1-9",wt:1.935,disp:79,cyl:4,mpg:27.3},
+      {name:"Porsche 914-2",wt:2.140,disp:120.3,cyl:4,mpg:26.0},{name:"Lotus Europa",wt:1.513,disp:95.1,cyl:4,mpg:30.4},
+      {name:"Ford Pantera L",wt:3.170,disp:351,cyl:8,mpg:15.8},{name:"Ferrari Dino",wt:2.770,disp:145,cyl:6,mpg:19.7},
+      {name:"Maserati Bora",wt:3.570,disp:301,cyl:8,mpg:15.0},{name:"Volvo 142E",wt:2.780,disp:121,cyl:4,mpg:21.4}
+    ];
+
+    // ======================== 中国灯光数据 ========================
+    const chinaLightCities = [
+      {name:"北京",lon:116.407,lat:39.904,dn:68.5,cfps:52340},{name:"天津",lon:117.191,lat:39.125,dn:55.2,cfps:41230},
+      {name:"上海",lon:121.474,lat:31.230,dn:72.8,cfps:78560},{name:"重庆",lon:106.552,lat:29.563,dn:45.3,cfps:38920},
+      {name:"哈尔滨",lon:126.642,lat:45.803,dn:32.1,cfps:28450},{name:"长春",lon:125.324,lat:43.887,dn:28.7,cfps:25670},
+      {name:"沈阳",lon:123.432,lat:41.806,dn:41.5,cfps:34560},{name:"石家庄",lon:114.515,lat:38.043,dn:38.2,cfps:31240},
+      {name:"太原",lon:112.550,lat:37.871,dn:25.8,cfps:21890},{name:"西安",lon:108.940,lat:34.342,dn:42.6,cfps:36780},
+      {name:"济南",lon:117.001,lat:36.651,dn:48.9,cfps:42340},{name:"郑州",lon:113.625,lat:34.746,dn:52.3,cfps:45670},
+      {name:"南京",lon:118.797,lat:32.060,dn:58.7,cfps:52340},{name:"杭州",lon:120.155,lat:30.274,dn:61.4,cfps:56780},
+      {name:"合肥",lon:117.227,lat:31.820,dn:44.8,cfps:37890},{name:"南昌",lon:115.858,lat:28.683,dn:35.6,cfps:28940},
+      {name:"福州",lon:119.296,lat:26.075,dn:46.2,cfps:36780},{name:"武汉",lon:114.305,lat:30.593,dn:53.8,cfps:48920},
+      {name:"长沙",lon:112.939,lat:28.228,dn:47.5,cfps:41230},{name:"广州",lon:113.265,lat:23.130,dn:85.3,cfps:82340},
+      {name:"深圳",lon:114.058,lat:22.543,dn:92.1,cfps:91230},{name:"南宁",lon:108.367,lat:22.818,dn:38.9,cfps:31240},
+      {name:"海口",lon:110.199,lat:20.044,dn:27.3,cfps:23450},{name:"成都",lon:104.066,lat:30.573,dn:56.4,cfps:47890},
+      {name:"贵阳",lon:106.630,lat:26.647,dn:30.2,cfps:24560},{name:"昆明",lon:102.833,lat:24.880,dn:33.5,cfps:26780},
+      {name:"兰州",lon:103.834,lat:36.061,dn:22.1,cfps:18920},{name:"西宁",lon:101.778,lat:36.617,dn:15.8,cfps:14560},
+      {name:"银川",lon:106.231,lat:38.487,dn:20.3,cfps:16780},{name:"乌鲁木齐",lon:87.617,lat:43.793,dn:28.9,cfps:21230},
+      {name:"呼和浩特",lon:111.749,lat:40.842,dn:24.1,cfps:19870},{name:"拉萨",lon:91.114,lat:29.651,dn:8.5,cfps:8760},
+      {name:"台北",lon:121.565,lat:25.033,dn:65.2,cfps:52340},{name:"香港",lon:114.172,lat:22.279,dn:90.4,cfps:85670},
+      {name:"澳门",lon:113.549,lat:22.190,dn:75.8,cfps:41230}
+    ];
+
+    // ======================== GeoJSON 加载 ========================
+    function loadChinaGeoJSON(callback) {
+      if (geoLoaded) { callback(chinaGeoJson); return; }
+      geoLoadCallbacks.push(callback);
+      if (geoLoading) return;
+      geoLoading = true;
+
+      var urls = [
+        'https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json',
+        'https://geo.datav.aliyun.com/areas_v3/bound/geojson/china.json'
+      ];
+      var urlIdx = 0;
+
+      function tryLoad() {
+        if (urlIdx >= urls.length) {
+          geoLoading = false;
+          chinaGeoJson = getEmbeddedChinaGeoJSON();
+          geoLoaded = true;
+          geoLoadCallbacks.forEach(function(cb) { cb(chinaGeoJson); });
+          geoLoadCallbacks = [];
+          return;
+        }
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', urls[urlIdx], true);
+        xhr.timeout = 8000;
+        xhr.onload = function() {
+          if (xhr.status === 200) {
+            try {
+              chinaGeoJson = JSON.parse(xhr.responseText);
+              geoLoaded = true;
+              geoLoading = false;
+              geoLoadCallbacks.forEach(function(cb) { cb(chinaGeoJson); });
+              geoLoadCallbacks = [];
+            } catch(e) { urlIdx++; tryLoad(); }
+          } else { urlIdx++; tryLoad(); }
+        };
+        xhr.onerror = function() { urlIdx++; tryLoad(); };
+        xhr.ontimeout = function() { urlIdx++; tryLoad(); };
+        xhr.send();
+      }
+      tryLoad();
+    }
+
+    function getEmbeddedChinaGeoJSON() {
+      return {
+        type: "FeatureCollection",
+        features: [
+          {type:"Feature",properties:{name:"北京"},geometry:{type:"Polygon",coordinates:[[[115.4,39.4],[117.5,39.4],[117.5,41.0],[115.4,41.0],[115.4,39.4]]]}},
+          {type:"Feature",properties:{name:"天津"},geometry:{type:"Polygon",coordinates:[[[116.6,38.5],[118.0,38.5],[118.0,40.2],[116.6,40.2],[116.6,38.5]]]}},
+          {type:"Feature",properties:{name:"上海"},geometry:{type:"Polygon",coordinates:[[[120.8,30.6],[122.0,30.6],[122.0,31.8],[120.8,31.8],[120.8,30.6]]]}},
+          {type:"Feature",properties:{name:"重庆"},geometry:{type:"Polygon",coordinates:[[[105.2,28.0],[110.2,28.0],[110.2,32.2],[105.2,32.2],[105.2,28.0]]]}},
+          {type:"Feature",properties:{name:"河北"},geometry:{type:"Polygon",coordinates:[[[113.5,36.0],[119.8,36.0],[119.8,42.6],[113.5,42.6],[113.5,36.0]]]}},
+          {type:"Feature",properties:{name:"山西"},geometry:{type:"Polygon",coordinates:[[[110.2,34.5],[114.5,34.5],[114.5,40.8],[110.2,40.8],[110.2,34.5]]]}},
+          {type:"Feature",properties:{name:"内蒙古"},geometry:{type:"Polygon",coordinates:[[[97.1,37.3],[126.0,37.3],[126.0,53.3],[97.1,53.3],[97.1,37.3]]]}},
+          {type:"Feature",properties:{name:"辽宁"},geometry:{type:"Polygon",coordinates:[[[118.8,38.7],[125.8,38.7],[125.8,43.5],[118.8,43.5],[118.8,38.7]]]}},
+          {type:"Feature",properties:{name:"吉林"},geometry:{type:"Polygon",coordinates:[[[121.6,40.8],[131.3,40.8],[131.3,46.3],[121.6,46.3],[121.6,40.8]]]}},
+          {type:"Feature",properties:{name:"黑龙江"},geometry:{type:"Polygon",coordinates:[[[121.2,43.3],[135.0,43.3],[135.0,53.6],[121.2,53.6],[121.2,43.3]]]}},
+          {type:"Feature",properties:{name:"江苏"},geometry:{type:"Polygon",coordinates:[[[116.3,30.7],[121.9,30.7],[121.9,35.1],[116.3,35.1],[116.3,30.7]]]}},
+          {type:"Feature",properties:{name:"浙江"},geometry:{type:"Polygon",coordinates:[[[118.0,27.0],[122.9,27.0],[122.9,31.1],[118.0,31.1],[118.0,27.0]]]}},
+          {type:"Feature",properties:{name:"安徽"},geometry:{type:"Polygon",coordinates:[[[114.8,29.4],[119.6,29.4],[119.6,34.6],[114.8,34.6],[114.8,29.4]]]}},
+          {type:"Feature",properties:{name:"福建"},geometry:{type:"Polygon",coordinates:[[[115.8,23.5],[120.7,23.5],[120.7,28.3],[115.8,28.3],[115.8,23.5]]]}},
+          {type:"Feature",properties:{name:"江西"},geometry:{type:"Polygon",coordinates:[[[113.5,24.3],[118.5,24.3],[118.5,30.1],[113.5,30.1],[113.5,24.3]]]}},
+          {type:"Feature",properties:{name:"山东"},geometry:{type:"Polygon",coordinates:[[[114.8,34.3],[122.7,34.3],[122.7,38.3],[114.8,38.3],[114.8,34.3]]]}},
+          {type:"Feature",properties:{name:"河南"},geometry:{type:"Polygon",coordinates:[[[110.3,31.3],[116.6,31.3],[116.6,36.3],[110.3,36.3],[110.3,31.3]]]}},
+          {type:"Feature",properties:{name:"湖北"},geometry:{type:"Polygon",coordinates:[[[108.3,29.0],[116.1,29.0],[116.1,33.3],[108.3,33.3],[108.3,29.0]]]}},
+          {type:"Feature",properties:{name:"湖南"},geometry:{type:"Polygon",coordinates:[[[108.8,24.6],[114.2,24.6],[114.2,30.1],[108.8,30.1],[108.8,24.6]]]}},
+          {type:"Feature",properties:{name:"广东"},geometry:{type:"Polygon",coordinates:[[[109.6,20.2],[117.3,20.2],[117.3,25.5],[109.6,25.5],[109.6,20.2]]]}},
+          {type:"Feature",properties:{name:"广西"},geometry:{type:"Polygon",coordinates:[[[104.5,21.0],[112.0,21.0],[112.0,26.3],[104.5,26.3],[104.5,21.0]]]}},
+          {type:"Feature",properties:{name:"海南"},geometry:{type:"Polygon",coordinates:[[[108.6,18.1],[111.0,18.1],[111.0,20.1],[108.6,20.1],[108.6,18.1]]]}},
+          {type:"Feature",properties:{name:"四川"},geometry:{type:"Polygon",coordinates:[[[97.3,26.0],[108.5,26.0],[108.5,34.3],[97.3,34.3],[97.3,26.0]]]}},
+          {type:"Feature",properties:{name:"贵州"},geometry:{type:"Polygon",coordinates:[[[103.6,24.6],[109.5,24.6],[109.5,29.2],[103.6,29.2],[103.6,24.6]]]}},
+          {type:"Feature",properties:{name:"云南"},geometry:{type:"Polygon",coordinates:[[[97.5,21.1],[106.2,21.1],[106.2,29.2],[97.5,29.2],[97.5,21.1]]]}},
+          {type:"Feature",properties:{name:"西藏"},geometry:{type:"Polygon",coordinates:[[[78.4,26.8],[99.1,26.8],[99.1,36.5],[78.4,36.5],[78.4,26.8]]]}},
+          {type:"Feature",properties:{name:"陕西"},geometry:{type:"Polygon",coordinates:[[[105.5,31.7],[111.2,31.7],[111.2,39.6],[105.5,39.6],[105.5,31.7]]]}},
+          {type:"Feature",properties:{name:"甘肃"},geometry:{type:"Polygon",coordinates:[[[92.8,32.5],[108.7,32.5],[108.7,42.8],[92.8,42.8],[92.8,32.5]]]}},
+          {type:"Feature",properties:{name:"青海"},geometry:{type:"Polygon",coordinates:[[[89.4,31.5],[103.0,31.5],[103.0,39.3],[89.4,39.3],[89.4,31.5]]]}},
+          {type:"Feature",properties:{name:"宁夏"},geometry:{type:"Polygon",coordinates:[[[104.3,35.2],[107.6,35.2],[107.6,39.2],[104.3,39.2],[104.3,35.2]]]}},
+          {type:"Feature",properties:{name:"新疆"},geometry:{type:"Polygon",coordinates:[[[73.5,34.3],[96.4,34.3],[96.4,49.2],[73.5,49.2],[73.5,34.3]]]}},
+          {type:"Feature",properties:{name:"台湾"},geometry:{type:"Polygon",coordinates:[[[120.0,21.9],[122.0,21.9],[122.0,25.3],[120.0,25.3],[120.0,21.9]]]}},
+          {type:"Feature",properties:{name:"香港"},geometry:{type:"Polygon",coordinates:[[[113.8,22.1],[114.4,22.1],[114.4,22.6],[113.8,22.6],[113.8,22.1]]]}},
+          {type:"Feature",properties:{name:"澳门"},geometry:{type:"Polygon",coordinates:[[[113.5,22.1],[113.6,22.1],[113.6,22.2],[113.5,22.2],[113.5,22.1]]]}}
+        ]
+      };
+    }
+
+    // ======================== 代码模板 ========================
+    const codeTemplates = {
+      'wind': `// 风速数据可视化分析 - 直方图 + 箱线图组合
+// 纽约市1973年5-9月风速数据
+
+// 准备直方图数据
+var windData = airquality.map(function(d){return d.Wind;}).filter(function(v){return v != null;});
+var binWidth = 2;
+var bins = {};
+windData.forEach(function(v){
+  var binFloor = Math.floor(v / binWidth) * binWidth;
+  bins[binFloor] = (bins[binFloor] || 0) + 1;
+});
+var xAxisData = Object.keys(bins).map(Number).sort(function(a,b){return a-b;});
+var binData = xAxisData.map(function(k){return bins[k];});
+var barLabel = xAxisData.map(function(k){return k + '-' + (k+binWidth);});
+
+// 准备箱线图数据
+var months = [5,6,7,8,9];
+var monthLabels = ['May','June','July','August','September'];
+var boxData = months.map(function(m){
+  var vals = airquality.filter(function(d){return d.Month===m && d.Wind!=null;}).map(function(d){return d.Wind;}).sort(function(a,b){return a-b;});
+  var n = vals.length;
+  var q1 = vals[Math.floor(n/4)];
+  var q2 = vals[Math.floor(n/2)];
+  var q3 = vals[Math.floor(3*n/4)];
+  return [vals[0], q1, q2, q3, vals[n-1]];
+});
+
+// 使用 grid 布局创建组合图表
+option = {
+  title: { 
+    text: '风速数据可视化分析', 
+    subtext: '纽约市1973年5-9月风速数据',
+    left: 'center' 
+  },
+  tooltip: { 
+    trigger: 'axis', 
+    axisPointer: { type: 'shadow' } 
+  },
+  grid: [
+    { left: 60, right: '52%', top: 80, bottom: 60 },
+    { left: '52%', right: 40, top: 80, bottom: 60 }
+  ],
+  xAxis: [
+    { 
+      type: 'category', 
+      data: barLabel, 
+      gridIndex: 0,
+      axisLabel: { rotate: 30, fontSize: 10, interval: 0 }, 
+      name: '风速 (mph)', 
+      nameLocation: 'middle', 
+      nameGap: 38 
+    },
+    { 
+      type: 'category', 
+      data: monthLabels, 
+      gridIndex: 1,
+      name: '月份' 
+    }
+  ],
+  yAxis: [
+    { 
+      type: 'value', 
+      gridIndex: 0,
+      name: '频数', 
+      nameLocation: 'middle', 
+      nameGap: 35 
+    },
+    { 
+      type: 'value', 
+      gridIndex: 1,
+      name: '风速 (mph)', 
+      nameLocation: 'middle', 
+      nameGap: 35 
+    }
+  ],
+  series: [
+    { 
+      type: 'bar', 
+      xAxisIndex: 0,
+      yAxisIndex: 0,
+      data: binData, 
+      itemStyle: { 
+        color: '#4682B4', 
+        borderColor: '#fff', 
+        borderWidth: 1, 
+        borderRadius: [4,4,0,0] 
+      }, 
+      barWidth: '80%',
+      name: '风速分布'
+    },
+    { 
+      type: 'boxplot', 
+      xAxisIndex: 1,
+      yAxisIndex: 1,
+      data: boxData, 
+      itemStyle: { 
+        color: '#90EE90', 
+        borderColor: '#228B22' 
+      },
+      name: '月度箱线图'
+    }
+  ]
+};
+
+renderChart(option);`,
+
+      'scatter': `// 散点回归分析 - 车重与排量关系
+// mtcars数据集 · 线性回归 · 异常点检测
+
+// 计算回归线
+var n = mtcars.length;
+var sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+mtcars.forEach(function(d){ 
+  sumX += d.wt; 
+  sumY += d.disp; 
+  sumXY += d.wt * d.disp; 
+  sumX2 += d.wt * d.wt; 
+});
+var slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+var intercept = (sumY - slope * sumX) / n;
+
+// 准备数据
+var normalData = [], outlierData = [];
+var residuals = mtcars.map(function(d){ 
+  return Math.abs(d.disp - (slope*d.wt+intercept)); 
+});
+var threshold = residuals.sort(function(a,b){return b-a;})[Math.floor(n*0.1)];
+
+mtcars.forEach(function(d, i){
+  var point = [d.wt, d.disp, d.name, d.cyl];
+  if (residuals[i] > threshold) {
+    outlierData.push(point);
+  } else {
+    normalData.push(point);
+  }
+});
+
+var lineData = [[1.5, slope*1.5+intercept], [5.5, slope*5.5+intercept]];
+
+option = {
+  title: { 
+    text: 'Vehicle Weight vs Engine Displacement', 
+    subtext: 'Linear Regression with Outlier Detection (Top 10%)', 
+    left: 'center' 
+  },
+  tooltip: { 
+    trigger: 'item', 
+    formatter: function(p){ 
+      return p.data[2] + '<br/>Weight: ' + p.data[0] + ' (1000 lbs)<br/>Displacement: ' + p.data[1] + ' (cu.in.)'; 
+    } 
+  },
+  legend: { 
+    data: ['Normal', 'Outlier', 'Regression Line'], 
+    bottom: 10 
+  },
+  grid: { 
+    left: 60, 
+    right: 40, 
+    top: 80, 
+    bottom: 60 
+  },
+  xAxis: { 
+    type: 'value', 
+    name: 'Weight (1000 lbs)', 
+    nameLocation: 'middle', 
+    nameGap: 30 
+  },
+  yAxis: { 
+    type: 'value', 
+    name: 'Displacement (cu.in.)', 
+    nameLocation: 'middle', 
+    nameGap: 40 
+  },
+  series: [
+    { 
+      name: 'Normal', 
+      type: 'scatter', 
+      data: normalData, 
+      symbolSize: 10, 
+      itemStyle: { color: '#4DBBD5' } 
+    },
+    { 
+      name: 'Outlier', 
+      type: 'scatter', 
+      data: outlierData, 
+      symbolSize: 12, 
+      symbol: 'triangle', 
+      itemStyle: { color: '#E64B35' } 
+    },
+    { 
+      name: 'Regression Line', 
+      type: 'line', 
+      data: lineData, 
+      lineStyle: { color: '#3C5488', width: 2 }, 
+      symbol: 'none', 
+      smooth: false 
+    }
+  ]
+};
+
+renderChart(option);`,
+
+      'light-map': `// 灯光强度地图 + CFPS气泡图
+// 中国县级夜间灯光数据 · 气泡大小表示CFPS样本量
+
+loadChinaGeoJSON(function(geoJson){
+  echarts.registerMap('china', geoJson);
+  
+  // 准备地图数据
+  var mapData = chinaLightCities.map(function(c){ 
+    return {name: c.name, value: c.dn}; 
+  });
+  
+  // 准备气泡数据
+  var bubbleData = chinaLightCities.map(function(c){ 
+    return {name: c.name, value: [c.lon, c.lat, c.cfps]}; 
+  });
+  
+  option = {
+    title: { 
+      text: '中国县域灯光强度与CFPS样本分布', 
+      subtext: '颜色=灯光强度 | 气泡大小=CFPS样本量', 
+      left: 'center' 
+    },
+    tooltip: { 
+      trigger: 'item', 
+      formatter: function(p){ 
+        if(p.seriesType==='map') return p.name + '<br/>灯光强度: ' + p.value; 
+        return p.name + '<br/>CFPS样本: ' + p.value[2]; 
+      } 
+    },
+    visualMap: { 
+      min: 0, 
+      max: 100, 
+      left: 'left', 
+      top: 'bottom', 
+      text: ['高','低'], 
+      calculable: true, 
+      inRange: { 
+        color: ['#FFFFB2','#FED976','#FEB24C','#FD8D3C','#FC4E2A','#E31A1C','#B10026'] 
+      } 
+    },
+    geo: { 
+      map: 'china', 
+      roam: true, 
+      zoom: 1.2, 
+      label: { show: true, fontSize: 10 }, 
+      itemStyle: { 
+        areaColor: '#eee', 
+        borderColor: '#999' 
+      }, 
+      emphasis: { 
+        itemStyle: { areaColor: '#ffd700' } 
+      } 
+    },
+    series: [
+      { 
+        type: 'map', 
+        map: 'china', 
+        data: mapData 
+      },
+      { 
+        type: 'effectScatter', 
+        coordinateSystem: 'geo', 
+        data: bubbleData, 
+        symbolSize: function(v){ 
+          return Math.sqrt(v[2]) / 10; 
+        }, 
+        itemStyle: { 
+          color: '#1f78b4', 
+          opacity: 0.8 
+        } 
+      }
+    ]
+  };
+  
+  renderChart(option);
+});`,
+
+      'flow-network': `// CFPS县际流量网络图 + 饼图
+// 动态流向可视化 · 线条粗细表示关联强度
+
+loadChinaGeoJSON(function(geoJson){
+  echarts.registerMap('china', geoJson);
+  
+  // 中心点（上海）
+  var center = {name: '上海', coords: [121.474, 31.230]};
+  
+  // 生成流向数据
+  var flowData = chinaLightCities
+    .filter(function(c){ return c.name !== '上海'; })
+    .slice(0, 15)
+    .map(function(c){
+      return { 
+        fromName: center.name, 
+        toName: c.name, 
+        coords: [center.coords, [c.lon, c.lat]], 
+        value: Math.floor(c.cfps / 1000) 
+      };
+    });
+  
+  // 流量等级分类
+  var flowCategories = [
+    {name: '1-50', value: 0}, 
+    {name: '51-100', value: 0}, 
+    {name: '101-200', value: 0}, 
+    {name: '200+', value: 0}
+  ];
+  flowData.forEach(function(d){ 
+    if(d.value < 50) flowCategories[0].value++; 
+    else if(d.value < 100) flowCategories[1].value++; 
+    else if(d.value < 200) flowCategories[2].value++; 
+    else flowCategories[3].value++; 
+  });
+  
+  option = {
+    title: [
+      { 
+        text: 'CFPS县际关系流量图', 
+        subtext: '线条粗细=关联强度', 
+        left: 'center' 
+      },
+      {
+        text: '流量等级分布',
+        left: '75%',
+        top: '55%',
+        textStyle: { fontSize: 12 }
+      }
+    ],
+    tooltip: { 
+      trigger: 'item',
+      formatter: function(p){
+        if(p.seriesType === 'lines') {
+          return p.data.fromName + ' → ' + p.data.toName + '<br/>流量: ' + p.data.value;
+        }
+        return p.name + ': ' + p.value;
+      }
+    },
+    geo: { 
+      map: 'china', 
+      roam: true, 
+      zoom: 1.2, 
+      itemStyle: { 
+        areaColor: '#f3f3f3', 
+        borderColor: '#999' 
+      } 
+    },
+    series: [
+      { 
+        type: 'lines', 
+        coordinateSystem: 'geo', 
+        data: flowData, 
+        effect: { 
+          show: true, 
+          period: 4, 
+          trailLength: 0.3, 
+          color: '#fff', 
+          symbolSize: 3 
+        }, 
+        lineStyle: { 
+          curveness: 0.2, 
+          opacity: 0.6, 
+          width: 2 
+        }
+      },
+      { 
+        type: 'effectScatter', 
+        coordinateSystem: 'geo', 
+        data: [{name: center.name, value: center.coords.concat(100)}], 
+        symbolSize: 20, 
+        itemStyle: { color: '#E64B35' } 
+      },
+      { 
+        type: 'scatter', 
+        coordinateSystem: 'geo', 
+        data: flowData.map(function(d){ 
+          return {name: d.toName, value: d.coords[1]}; 
+        }), 
+        symbolSize: 8, 
+        itemStyle: { color: '#3C5488' } 
+      },
+      {
+        type: 'pie',
+        radius: ['15%', '25%'],
+        center: ['80%', '70%'],
+        data: flowCategories,
+        label: { fontSize: 10 },
+        itemStyle: {
+          color: function(p){ 
+            return ['#9ecae1','#4292c6','#08519c','#08306b'][p.dataIndex]; 
+          }
+        }
+      }
+    ]
+  };
+  
+  renderChart(option);
+});`,
+
+      'heatmap': `// 时空热力图
+// 一周内各时段灯光活跃度分布
+
+// 生成热力数据
+var hours = ['12a','1a','2a','3a','4a','5a','6a','7a','8a','9a','10a','11a','12p','1p','2p','3p','4p','5p','6p','7p','8p','9p','10p','11p'];
+var days = ['周六','周五','周四','周三','周二','周一','周日'];
+var data = [];
+for (var i = 0; i < 7; i++) {
+  for (var j = 0; j < 24; j++) {
+    // 模拟数据：工作日白天更高，周末晚上更高
+    var base = (i < 2) ? 60 : 40; // 周末基础值更高
+    var timeFactor = (j >= 8 && j <= 20) ? 30 : -10; // 白天更高
+    var value = Math.max(0, Math.min(100, base + timeFactor + Math.random() * 30));
+    data.push([j, i, Math.floor(value)]);
+  }
+}
+
+option = {
+  title: { 
+    text: '灯光强度时空热力分布', 
+    subtext: '模拟数据：一周内各时段灯光活跃度', 
+    left: 'center' 
+  },
+  tooltip: { 
+    position: 'top',
+    formatter: function(p) {
+      return days[p.data[1]] + ' ' + hours[p.data[0]] + '<br/>活跃度: ' + p.data[2];
+    }
+  },
+  grid: { 
+    height: '65%', 
+    top: '15%',
+    left: '10%',
+    right: '10%'
+  },
+  xAxis: { 
+    type: 'category', 
+    data: hours, 
+    splitArea: { show: true },
+    name: '时间'
+  },
+  yAxis: { 
+    type: 'category', 
+    data: days, 
+    splitArea: { show: true },
+    name: '星期'
+  },
+  visualMap: { 
+    min: 0, 
+    max: 100, 
+    calculable: true, 
+    orient: 'horizontal', 
+    left: 'center', 
+    bottom: '5%', 
+    inRange: { 
+      color: ['#313695','#4575b4','#74add1','#abd9e9','#e0f3f8','#fee090','#fdae61','#f46d43','#d73027','#a50026'] 
+    } 
+  },
+  series: [{ 
+    name: '灯光活跃度', 
+    type: 'heatmap', 
+    data: data, 
+    label: { show: false }, 
+    emphasis: { 
+      itemStyle: { 
+        shadowBlur: 10, 
+        shadowColor: 'rgba(0,0,0,0.5)' 
+      } 
+    } 
+  }]
+};
+
+renderChart(option);`,
+
+      'sankey': `// CFPS流向桑基图
+// 区域间样本流动关系可视化
+
+option = {
+  title: { 
+    text: 'CFPS样本流向桑基图', 
+    subtext: '区域间样本流动关系', 
+    left: 'center' 
+  },
+  tooltip: { 
+    trigger: 'item', 
+    triggerOn: 'mousemove' 
+  },
+  series: [{
+    type: 'sankey',
+    data: [
+      {name: '北京'}, {name: '上海'}, {name: '广州'}, {name: '深圳'},
+      {name: '东部'}, {name: '中部'}, {name: '西部'}, {name: '北部'}, {name: '南部'}
+    ],
+    links: [
+      {source: '北京', target: '北部', value: 52340},
+      {source: '北京', target: '东部', value: 31240},
+      {source: '上海', target: '东部', value: 78560},
+      {source: '上海', target: '南部', value: 23450},
+      {source: '广州', target: '南部', value: 82340},
+      {source: '广州', target: '中部', value: 18920},
+      {source: '深圳', target: '南部', value: 91230},
+      {source: '深圳', target: '东部', value: 15670},
+      {source: '东部', target: '中部', value: 45670},
+      {source: '中部', target: '西部', value: 32340},
+      {source: '北部', target: '西部', value: 27890}
+    ],
+    emphasis: { 
+      focus: 'adjacency' 
+    },
+    lineStyle: { 
+      color: 'gradient', 
+      curveness: 0.5 
+    },
+    itemStyle: { 
+      color: '#4facfe', 
+      borderColor: '#4facfe' 
+    },
+    label: { 
+      color: '#333', 
+      fontSize: 12 
+    }
+  }]
+};
+
+renderChart(option);`,
+
+      'radar': `// 多维度雷达图
+// 城市综合指标对比分析
+
+option = {
+  title: { 
+    text: '城市综合指标雷达图', 
+    subtext: '多维度对比分析', 
+    left: 'center' 
+  },
+  tooltip: {},
+  legend: { 
+    data: ['北京', '上海', '广州', '深圳'], 
+    bottom: 10 
+  },
+  radar: {
+    indicator: [
+      { name: '灯光强度', max: 100 },
+      { name: 'CFPS样本', max: 100000 },
+      { name: '经济发展', max: 100 },
+      { name: '人口密度', max: 100 },
+      { name: '基础设施', max: 100 },
+      { name: '教育水平', max: 100 }
+    ],
+    shape: 'circle',
+    splitNumber: 5,
+    axisName: { 
+      color: '#333',
+      fontSize: 11
+    },
+    splitLine: { 
+      lineStyle: { 
+        color: ['rgba(79, 172, 254, 0.1)', 'rgba(79, 172, 254, 0.2)', 'rgba(79, 172, 254, 0.4)', 'rgba(79, 172, 254, 0.6)', 'rgba(79, 172, 254, 0.8)'].reverse() 
+      } 
+    },
+    splitArea: { show: false }
+  },
+  series: [{
+    name: '城市对比',
+    type: 'radar',
+    data: [
+      { 
+        value: [68.5, 52340, 85, 90, 88, 92], 
+        name: '北京', 
+        itemStyle: { color: '#E64B35' }, 
+        areaStyle: { opacity: 0.2 } 
+      },
+      { 
+        value: [72.8, 78560, 92, 95, 90, 88], 
+        name: '上海', 
+        itemStyle: { color: '#4DBBD5' }, 
+        areaStyle: { opacity: 0.2 } 
+      },
+      { 
+        value: [85.3, 82340, 88, 85, 82, 80], 
+        name: '广州', 
+        itemStyle: { color: '#00C9A7' }, 
+        areaStyle: { opacity: 0.2 } 
+      },
+      { 
+        value: [92.1, 91230, 90, 88, 85, 85], 
+        name: '深圳', 
+        itemStyle: { color: '#FFC300' }, 
+        areaStyle: { opacity: 0.2 } 
+      }
+    ]
+  }]
+};
+
+renderChart(option);`
+    };
+
+    // ======================== 缩略图配置 ========================
+    function initGalleryPreviews() {
+      // 风速直方图预览
+      var windChart = echarts.init(document.getElementById('preview-wind'));
+      var windData = airquality.map(function(d){return d.Wind;}).filter(function(v){return v != null;});
+      var bins = {};
+      windData.forEach(function(v){
+        var binFloor = Math.floor(v / 2) * 2;
+        bins[binFloor] = (bins[binFloor] || 0) + 1;
+      });
+      var xAxisData = Object.keys(bins).map(Number).sort(function(a,b){return a-b;});
+      windChart.setOption({
+        grid: { left: 5, right: 5, top: 5, bottom: 5 },
+        xAxis: { type: 'category', data: xAxisData, show: false },
+        yAxis: { type: 'value', show: false },
+        series: [{ type: 'bar', data: xAxisData.map(function(k){return bins[k];}), itemStyle: { color: '#4682B4', borderRadius: [2,2,0,0] } }]
+      });
+      previewCharts['wind'] = windChart;
+
+      // 散点图预览
+      var scatterChart = echarts.init(document.getElementById('preview-scatter'));
+      scatterChart.setOption({
+        grid: { left: 5, right: 5, top: 5, bottom: 5 },
+        xAxis: { type: 'value', show: false, min: 1.5, max: 5.5 },
+        yAxis: { type: 'value', show: false, min: 50, max: 500 },
+        series: [{ type: 'scatter', data: mtcars.map(function(d){return [d.wt, d.disp];}), symbolSize: 4, itemStyle: { color: '#4DBBD5' } }]
+      });
+      previewCharts['scatter'] = scatterChart;
+
+      // 地图预览（简化）
+      var mapChart = echarts.init(document.getElementById('preview-light-map'));
+      loadChinaGeoJSON(function(geoJson){
+        echarts.registerMap('china', geoJson);
+        mapChart.setOption({
+          geo: { map: 'china', roam: false, zoom: 1.2, label: { show: false }, itemStyle: { areaColor: '#eee' } },
+          series: [{ type: 'scatter', coordinateSystem: 'geo', data: chinaLightCities.slice(0,10).map(function(c){return [c.lon, c.lat, c.dn];}), symbolSize: 6, itemStyle: { color: '#E31A1C' } }]
+        });
+      });
+      previewCharts['light-map'] = mapChart;
+
+      // 流量网络预览
+      var flowChart = echarts.init(document.getElementById('preview-flow-network'));
+      loadChinaGeoJSON(function(geoJson){
+        echarts.registerMap('china', geoJson);
+        var center = [121.474, 31.230];
+        var lines = chinaLightCities.slice(1,8).map(function(c){
+          return { coords: [center, [c.lon, c.lat]] };
+        });
+        flowChart.setOption({
+          geo: { map: 'china', roam: false, zoom: 1.2, itemStyle: { areaColor: '#f3f3f3' } },
+          series: [
+            { type: 'lines', coordinateSystem: 'geo', data: lines, lineStyle: { curveness: 0.2, color: '#E64B35', width: 1 }, effect: { show: true, period: 4, symbolSize: 2 } },
+            { type: 'scatter', coordinateSystem: 'geo', data: [center], symbolSize: 8, itemStyle: { color: '#E64B35' } }
+          ]
+        });
+      });
+      previewCharts['flow-network'] = flowChart;
+
+      // 热力图预览
+      var heatChart = echarts.init(document.getElementById('preview-heatmap'));
+      var heatData = [];
+      for (var i = 0; i < 7; i++) {
+        for (var j = 0; j < 12; j++) {
+          heatData.push([j, i, Math.floor(Math.random() * 100)]);
+        }
+      }
+      heatChart.setOption({
+        grid: { left: 5, right: 5, top: 5, bottom: 5 },
+        xAxis: { type: 'category', show: false, data: Array(12).fill('') },
+        yAxis: { type: 'category', show: false, data: Array(7).fill('') },
+        visualMap: { show: false, min: 0, max: 100, inRange: { color: ['#313695','#a50026'] } },
+        series: [{ type: 'heatmap', data: heatData }]
+      });
+      previewCharts['heatmap'] = heatChart;
+
+      // 桑基图预览
+      var sankeyChart = echarts.init(document.getElementById('preview-sankey'));
+      sankeyChart.setOption({
+        series: [{
+          type: 'sankey',
+          data: [{name: '北京'}, {name: '上海'}, {name: '东部'}, {name: '南部'}],
+          links: [
+            {source: '北京', target: '东部', value: 30},
+            {source: '上海', target: '东部', value: 50},
+            {source: '北京', target: '南部', value: 20}
+          ],
+          lineStyle: { color: 'gradient', curveness: 0.5 },
+          itemStyle: { color: '#4facfe' },
+          label: { show: false }
+        }]
+      });
+      previewCharts['sankey'] = sankeyChart;
+
+      // 雷达图预览
+      var radarChart = echarts.init(document.getElementById('preview-radar'));
+      radarChart.setOption({
+        radar: {
+          indicator: [{name: 'A', max: 100}, {name: 'B', max: 100}, {name: 'C', max: 100}, {name: 'D', max: 100}],
+          radius: '60%',
+          axisName: { show: false },
+          splitLine: { lineStyle: { color: 'rgba(79, 172, 254, 0.3)' } }
+        },
+        series: [{
+          type: 'radar',
+          data: [
+            { value: [80, 70, 90, 60], itemStyle: { color: '#E64B35' }, areaStyle: { opacity: 0.2 } },
+            { value: [60, 90, 70, 80], itemStyle: { color: '#4DBBD5' }, areaStyle: { opacity: 0.2 } }
+          ]
+        }]
+      });
+      previewCharts['radar'] = radarChart;
+    }
+
+    // ======================== CodeMirror 初始化 ========================
+    function initEditor() {
+      editor = CodeMirror.fromTextArea(document.getElementById('codeEditor'), {
+        mode: 'javascript',
+        theme: 'default',
+        lineNumbers: true,
+        lineWrapping: true,
+        indentUnit: 2,
+        tabSize: 2,
+        extraKeys: {
+          'Ctrl-Enter': runCode,
+          'Cmd-Enter': runCode
+        }
+      });
+      
+      // 设置深色主题
+      editor.getWrapperElement().style.background = '#0d1117';
+      editor.getWrapperElement().style.color = '#c9d1d9';
+      
+      // 加载初始模板
+      loadTemplate('wind');
+    }
+
+    // ======================== 加载模板 ========================
+    function loadTemplate(template) {
+      const code = codeTemplates[template] || codeTemplates['wind'];
+      editor.setValue(code);
+      runCode();
+    }
+
+    // ======================== 渲染图表 ========================
+    function renderChart(option) {
+      const container = document.getElementById('chartContainer');
+      if (chartInstance) {
+        chartInstance.dispose();
+      }
+      chartInstance = echarts.init(container);
+      chartInstance.setOption(option);
+    }
+
+    // ======================== 运行代码 ========================
+    function runCode() {
+      try {
+        const code = editor.getValue();
+        // 创建安全执行上下文
+        const fn = new Function('airquality', 'mtcars', 'chinaLightCities', 'loadChinaGeoJSON', 'renderChart', 'echarts', code);
+        fn(airquality, mtcars, chinaLightCities, loadChinaGeoJSON, renderChart, echarts);
+      } catch (error) {
+        console.error('Error running code:', error);
+        document.getElementById('chartContainer').innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">⚠️</div>
+            <div class="empty-title">代码错误</div>
+            <div class="empty-desc">${error.message}</div>
+          </div>
+        `;
+      }
+    }
+
+    // ======================== 文件上传 ========================
+    function handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const text = e.target.result;
+        parseCSV(text);
+      };
+      reader.readAsText(file);
+    }
+
+    // ======================== 解析 CSV ========================
+    function parseCSV(text) {
+      const lines = text.trim().split('\n');
+      const headers = lines[0].split(',').map(h => h.trim());
+      const data = [];
+      
+      for (let i = 1; i < lines.length && i < 100; i++) {
+        const values = lines[i].split(',');
+        const row = {};
+        headers.forEach((h, j) => {
+          const val = values[j] ? values[j].trim() : '';
+          row[h] = isNaN(val) ? val : parseFloat(val);
+        });
+        data.push(row);
+      }
+      
+      currentData = data;
+      
+      // 更新UI
+      document.getElementById('uploadArea').classList.add('has-data');
+      document.getElementById('uploadText').textContent = `已加载: ${data.length} 行数据`;
+      document.getElementById('dataStatus').textContent = `(${data.length} 行)`;
+      
+      // 显示预览
+      const preview = document.getElementById('dataPreview');
+      preview.style.display = 'block';
+      preview.innerHTML = `<strong>列:</strong> ${headers.join(', ')}<br><br>` +
+        data.slice(0, 5).map(row => JSON.stringify(row)).join('<br>');
+      if (data.length > 5) {
+        preview.innerHTML += `<br>... 还有 ${data.length - 5} 行`;
+      }
+      
+      // 使数据可用于编辑器
+      window.uploadedData = data;
+    }
+
+    // ======================== 导出图表 ========================
+    function exportChart(format) {
+      if (!chartInstance) return;
+      const url = chartInstance.getDataURL({
+        type: format,
+        pixelRatio: 2,
+        backgroundColor: '#fff'
+      });
+      const link = document.createElement('a');
+      link.download = 'chart.' + format;
+      link.href = url;
+      link.click();
+    }
+
+    // ======================== 重置代码 ========================
+    function resetCode() {
+      const activeGallery = document.querySelector('.gallery-item.active');
+      const chartType = activeGallery ? activeGallery.dataset.chart : 'wind';
+      loadTemplate(chartType);
+    }
+
+    // ======================== 刷新预览 ========================
+    function refreshPreview() {
+      runCode();
+    }
+
+    // ======================== 事件监听 ========================
+    document.addEventListener('DOMContentLoaded', function() {
+      initEditor();
+      initGalleryPreviews();
+      
+      // 图库项点击
+      document.querySelectorAll('.gallery-item').forEach(item => {
+        item.addEventListener('click', function() {
+          document.querySelectorAll('.gallery-item').forEach(i => i.classList.remove('active'));
+          this.classList.add('active');
+          
+          const chart = this.dataset.chart;
+          loadTemplate(chart);
+        });
+      });
+      
+      // 拖拽上传
+      const uploadArea = document.getElementById('uploadArea');
+      uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.style.borderColor = 'var(--accent)';
+      });
+      uploadArea.addEventListener('dragleave', () => {
+        uploadArea.style.borderColor = '';
+      });
+      uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.style.borderColor = '';
+        const file = e.dataTransfer.files[0];
+        if (file && file.name.endsWith('.csv')) {
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            parseCSV(e.target.result);
+          };
+          reader.readAsText(file);
+        }
+      });
+    });
+
+    // ======================== 窗口大小调整 ========================
+    window.addEventListener('resize', () => {
+      if (chartInstance) chartInstance.resize();
+      // 调整所有缩略图
+      Object.values(previewCharts).forEach(chart => {
+        if (chart) chart.resize();
+      });
+    });
+  </script>
+</body>
+</html>
